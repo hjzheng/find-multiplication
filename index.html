@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<!--
+Created using JS Bin
+http://jsbin.com
+
+Copyright (c) 2022 by hjzheng (http://jsbin.com/piredol/5/edit)
+
+Released under the MIT license: http://jsbin.mit-license.org
+-->
+<meta name="robots" content="noindex">
+<html>
+<head>
+<meta name="description" content="[乘法练习]">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width">
+  <title>JS Bin</title>
+  <script src="./easeljs.min.js"></script>
+</head>
+<body>
+  <canvas id="canvas" width="800px" height="800px"></canvas>
+  <p id="ans"></p>
+<script id="jsbin-javascript">
+let w, h
+let stage
+let update
+// rect 每行 10 个，总共 100 个
+let n = 10
+let rects = []
+let rectW, rectH
+
+let texts = []
+
+let selectingNumbers = []
+let selectedNumbers = new Set()
+
+let ans = []
+
+let resolveAnsNum = 0
+
+function genNumbers(n) {
+  let numbers = []
+  let sets = new Set()
+  
+  for (let i=0; i<n; i++) {
+    let row = []
+    for (let j=0; j<n; j++) {
+      let num = parseInt(Math.random() * (n - 1) + 1)
+      row.push(num)
+    }
+    numbers.push(row)
+  }
+  
+  for (let z=0; z<40; z++) {
+    let start = parseInt(Math.random() * 100)
+    
+    let x = parseInt(start/10)
+    let y = start%10
+    
+    let d = parseInt(Math.random() * 4)
+
+    
+    const setNumberFuns = [
+      () => {
+        if (x - 2 >= 0 
+        && !sets.has(`${x},${y}`)
+        && !sets.has(`${x-1},${y}`)
+        && !sets.has(`${x-2},${y}`)) {
+          // to left
+          numbers[x][y] = numbers[x-1][y] * numbers[x-2][y];
+          sets.add(`${x},${y}`)
+          sets.add(`${x-1},${y}`)
+          sets.add(`${x-2},${y}`)
+          ans.push(`${numbers[x][y]} = ${numbers[x-1][y]} * ${numbers[x-2][y]}`)
+          return true
+        } else {
+          return false
+        }
+      },
+      () => {
+        if (x + 2 < 10 
+       && !sets.has(`${x},${y}`)
+       && !sets.has(`${x+1},${y}`)
+       && !sets.has(`${x+2},${y}`)) {
+          //to right
+          numbers[x][y] = numbers[x+1][y] * numbers[x+2][y];
+          sets.add(`${x},${y}`)
+          sets.add(`${x+1},${y}`)
+          sets.add(`${x+2},${y}`)
+          ans.push(`${numbers[x][y]} = ${numbers[x+1][y]} * ${numbers[x+2][y]}`)
+          return true
+        } else {
+          return false
+        }
+      },
+      () => {
+        if (y - 2 >= 0
+       && !sets.has(`${x},${y}`)
+       && !sets.has(`${x},${y-1}`)
+       && !sets.has(`${x},${y-2}`)) {
+        //to top
+          numbers[x][y] = numbers[x][y-1] * numbers[x][y-2];
+          sets.add(`${x},${y}`)
+          sets.add(`${x},${y-1}`)
+          sets.add(`${x},${y-2}`)
+          ans.push(`${numbers[x][y]} = ${numbers[x][y-1]} * ${numbers[x][y-2]}`)
+          return true
+        } else {
+          return false
+        }
+      },
+      () => {
+        if (y + 2 < 10  
+        && !sets.has(`${x},${y}`)
+        && !sets.has(`${x},${y+1}`)
+        && !sets.has(`${x},${y+2}`)) {
+          //to down
+          numbers[x][y] = numbers[x][y+1] * numbers[x][y+2];
+          sets.add(`${x},${y}`)
+          sets.add(`${x},${y+1}`)
+          sets.add(`${x},${y+2}`)
+          ans.push(`${numbers[x][y]} = ${numbers[x][y+1]} * ${numbers[x][y+2]}`)
+           return true
+         } else {
+           return false
+         }
+      }
+    ]
+    
+    setNumberFuns[d]()
+     
+  }
+  
+  return numbers
+}
+
+let numbers = genNumbers(n)
+
+console.log(ans.length)
+
+window.onload = function() {
+  let ansEle = document.getElementById('ans')
+  ansEle.innerHTML = ans.join(',  ')
+    let canvas = document.getElementById('canvas')
+    
+    w = canvas.width
+    h = canvas.height
+    
+    rectW = w/n
+    rectH = h/n
+    
+    stage = new createjs.Stage(canvas);
+    // Create a Shape DisplayObject.
+  
+    for (let i=0; i<n; i++) {
+        for (let j=0; j<n; j++) {
+           let rect = new createjs.Shape();
+          
+           rect.graphics.beginStroke('gray').rect(i*rectW, j*rectH, rectW, rectH)
+
+           rect.number = numbers[i][j]
+           rect.i = i
+           rect.j = j
+
+
+           rects.push(rect)
+
+           
+           let text = new createjs.Text(numbers[i][j], "50px monospace", "#000000");
+           text.x = i*rectW + 10
+           text.y = j*rectH + 60
+           text.textBaseline = "alphabetic";
+          
+           texts.push(text)
+        }
+    }
+    
+    rects.forEach(rect => {
+      stage.addChild(rect);
+    })
+    
+    texts.forEach(txt => {
+       stage.addChild(txt);
+    })
+
+    stage.addEventListener('stagemousedown', handleMouseDown)
+    
+    //Update stage will render next frame
+    stage.update();
+
+    createjs.Ticker.addEventListener("tick", tick);
+}
+
+function tick() {
+  if (update) {
+    update = false; // only update once
+    stage.update(event);
+  }
+}
+
+function changeColor(rectInstance, rect, color) {
+  rectInstance.graphics.beginFill(color)
+      .drawRect(rect.x, rect.y, rect.w, rect.h)
+}
+
+function isNeighbor(rect1, rect2) {
+  if (
+    (rect1.i + 1 === rect2.i && rect1.j === rect2.j) || 
+    (rect1.i - 1 === rect2.i && rect1.j === rect2.j) || 
+    (rect1.i === rect2.i && rect1.j - 1 === rect2.j) || 
+    (rect1.i === rect2.i && rect1.j + 1 === rect2.j) 
+    ) {
+    return true
+  } else {
+    return false
+  }
+}
+
+function isOneLine(selectingRects, rect) {
+  let [r1,r2] = selectingRects
+
+  if (r1.i === r2.i) { // x 方向
+
+    if (Math.max(r1.j, r2.j) + 1 === rect.j &&  r1.i === rect.i) {
+      return true
+    }
+
+    if (Math.min(r1.j, r2.j) - 1 === rect.j &&  r1.i === rect.i) {
+      return true
+    }
+  } else if (r1.j === r2.j) { // y 方向
+    if (Math.max(r1.i, r2.i) + 1 === rect.i &&  r1.j === rect.j) {
+      return true
+    }
+
+    if (Math.min(r1.i, r2.i) - 1 === rect.i &&  r1.j === rect.j) {
+      return true
+    }
+  }
+
+  return false
+}
+
+function validation(rects) {
+  rects.sort((r1, r2) => r1.i >= r2.i || r1.j >= r2.j)
+  let [r1, r2, r3] = rects
+  if (r1.number * r2.number === r3.number || r1.number === r2.number * r3.number) {
+    return true
+  } else {
+    return false
+  }
+}
+
+function handleMouseDown(event) {
+    // 鼠标的坐标是否在矩形中 
+    let x = event.stageX, y = event.stageY
+
+    for (let i=0; i<rects.length; i++) {
+      let rect = rects[i].graphics.command
+      if (x >= rect.x 
+        && x <= rect.x + rect.w 
+        && y >= rect.y 
+        && y <= rect.y + rect.h) {
+
+        if (selectedNumbers.has(`${rects[i].i},${rects[i].j}`)) return 
+
+        if (selectingNumbers.length === 0) {
+          changeColor(rects[i], rect, '#ffc115cc')
+          selectingNumbers.push(rects[i])
+        } else if (selectingNumbers.length === 1) {
+          if (isNeighbor(selectingNumbers[0], rects[i])) {
+             changeColor(rects[i], rect, '#ffc115cc')
+             selectingNumbers.push(rects[i])
+          }
+        } else if (selectingNumbers.length === 2){
+          if (isOneLine(selectingNumbers, rects[i])) {
+             changeColor(rects[i], rect, '#ffc115cc')
+             selectingNumbers.push(rects[i])
+             // 验证选择
+             if (validation(selectingNumbers)) {
+                selectingNumbers.forEach((rect) => {
+                  changeColor(rect, rect.graphics.command, '#4caf50d6')
+                  selectedNumbers.add(`${rect.i},${rect.j}`)
+                })
+                selectingNumbers = []
+                resolveAnsNum++
+                if (resolveAnsNum === ans.length) {
+                  alert ('恭喜你，全部找到了')
+                }
+             } else {
+                selectingNumbers.forEach((rect) => {
+                  changeColor(rect, rect.graphics.command, '#ffffff')
+                })
+                selectingNumbers = []
+             }
+          }
+        }
+
+        update = true;
+        break;
+      }
+    }
+}
+</script>
+</body>
+</html>
